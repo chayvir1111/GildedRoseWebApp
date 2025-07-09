@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Gilded Rose</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f5f5f5;
+            padding: 2rem;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0.5rem;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        .form-group {
+            margin: 1rem 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        .item-types-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .item-type-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .item-type-card:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+        .item-type-card.selected {
+            background: #e7f3ff;
+            border-color: #007bff;
+        }
+        .rules-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .rule-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: #f8f9fa;
+        }
+        .status-message {
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            display: none;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👑 Admin Panel</h1>
+        <p>Configure item types and rules dynamically</p>
+        <a href="/" style="color: white; text-decoration: none;">← Back to Home</a>
+    </div>
+
+    <div class="container">
+        <!-- Item Types Panel -->
+        <div class="panel">
+            <h2>Item Types</h2>
+            <button class="btn btn-primary" onclick="initializeDefaultData()">Initialize Default Data</button>
+            <button class="btn btn-success" onclick="showCreateItemTypeForm()">+ Create New Type</button>
+            
+            <div class="status-message" id="status-message"></div>
+            
+            <div class="item-types-list" id="item-types-list">
+                <!-- Item types will be loaded here -->
+            </div>
+
+            <!-- Create Item Type Form -->
+            <div id="create-form" style="display: none; margin-top: 1rem;">
+                <h3>Create New Item Type</h3>
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="new-item-name" placeholder="e.g., Cursed">
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea id="new-item-description" placeholder="Describe the item behavior"></textarea>
+                </div>
+                <button class="btn btn-success" onclick="createItemType()">Create</button>
+                <button class="btn" onclick="hideCreateItemTypeForm()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Rules Panel -->
+        <div class="panel">
+            <h2>Rules for <span id="selected-item-name">Select an item type</span></h2>
+            
+            <div id="rules-section" style="display: none;">
+                <button class="btn btn-success" onclick="showAddRuleForm()">+ Add Rule</button>
+                
+                <div class="rules-container" id="rules-container">
+                    <!-- Rules will be loaded here -->
+                </div>
+
+                <!-- Add Rule Form -->
+                <div id="add-rule-form" style="display: none; margin-top: 1rem;">
+                    <h3>Add New Rule</h3>
+                    <div class="form-group">
+                        <label>Rule Name:</label>
+                        <select id="new-rule-name">
+                            <option value="quality_change">Quality Change</option>
+                            <option value="set_quality">Set Quality</option>
+                            <option value="sellin_change">Sell-In Change</option>
+                            <option value="multiply_quality_change">Multiply Quality Change</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Rule Value:</label>
+                        <input type="text" id="new-rule-value" placeholder="e.g., -2, 80, 1">
+                    </div>
+                    <div class="form-group">
+                        <label>Condition (optional):</label>
+                        <input type="text" id="new-rule-condition" placeholder="e.g., sellIn >= 0 AND quality > 0">
+                    </div>
+                    <div class="form-group">
+                        <label>Priority:</label>
+                        <input type="number" id="new-rule-priority" value="1" min="0">
+                    </div>
+                    <button class="btn btn-success" onclick="addRule()">Add Rule</button>
+                    <button class="btn" onclick="hideAddRuleForm()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedItemType = null;
+        
+        // Load item types on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadItemTypes();
+        });
+
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'status-message status-error' : 'status-message status-success';
+            statusEl.style.display = 'block';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 3000);
+        }
+
+        async function initializeDefaultData() {
+            try {
+                const response = await fetch('/api/admin/initialize', {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    showStatus('Default data initialized successfully!');
+                    loadItemTypes();
+                } else {
+                    showStatus('Error initializing data', true);
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, true);
+            }
+        }
+
+        async function loadItemTypes() {
+            try {
+                const response = await fetch('/api/admin/item-types');
+                const itemTypes = await response.json();
+                
+                const container = document.getElementById('item-types-list');
+                container.innerHTML = itemTypes.map(type => `
+                    <div class="item-type-card" onclick="selectItemType('${type.id}', '${type.name}')">
+                        <strong>${type.name}</strong>
+                        <p>${type.description}</p>
+                        <small>${type.rules.length} rules</small>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showStatus('Error loading item types: ' + error.message, true);
+            }
+        }
+
+        function selectItemType(id, name) {
+            selectedItemType = id;
+            document.getElementById('selected-item-name').textContent = name;
+            document.getElementById('rules-section').style.display = 'block';
+            
+            // Highlight selected item
+            document.querySelectorAll('.item-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.target.closest('.item-type-card').classList.add('selected');
+            
+            loadRules(id);
+        }
+
+        async function loadRules(itemTypeId) {
+            try {
+                const response = await fetch(`/api/admin/item-types/${itemTypeId}`);
+                const itemType = await response.json();
+                
+                const container = document.getElementById('rules-container');
+                container.innerHTML = itemType.rules.map(rule => `
+                    <div class="rule-item">
+                        <strong>${rule.ruleName}</strong>: ${rule.ruleValue}
+                        <br><small>Condition: ${rule.conditionExpression || 'Always'}</small>
+                        <br><small>Priority: ${rule.priority}</small>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showStatus('Error loading rules: ' + error.message, true);
+            }
+        }
+
+        function showCreateItemTypeForm() {
+            document.getElementById('create-form').style.display = 'block';
+        }
+
+        function hideCreateItemTypeForm() {
+            document.getElementById('create-form').style.display = 'none';
+            // Clear form
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-description').value = '';
+        }
+
+        async function createItemType() {
+            const name = document.getElementById('new-item-name').value;
+            const description = document.getElementById('new-item-description').value;
+            
+            if (!name.trim()) {
+                showStatus('Name is required', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/item-types', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        description: description,
+                        rules: []
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Item type created successfully!');
+                    hideCreateItemTypeForm();
+                    loadItemTypes();
+                } else {
+                    showStatus('Error creating item type', true);
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, true);
+            }
+        }
+
+        function showAddRuleForm() {
+            document.getElementById('add-rule-form').style.display = 'block';
+        }
+
+        function hideAddRuleForm() {
+            document.getElementById('add-rule-form').style.display = 'none';
+            // Clear form
+            document.getElementById('new-rule-value').value = '';
+            document.getElementById('new-rule-condition').value = '';
+            document.getElementById('new-rule-priority').value = '1';
+        }
+
+        async function addRule() {
+            if (!selectedItemType) {
+                showStatus('Please select an item type first', true);
+                return;
+            }
+
+            const ruleName = document.getElementById('new-rule-name').value;
+            const ruleValue = document.getElementById('new-rule-value').value;
+            const condition = document.getElementById('new-rule-condition').value;
+            const priority = parseInt(document.getElementById('new-rule-priority').value);
+
+            if (!ruleValue.trim()) {
+                showStatus('Rule value is required', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/item-types/${selectedItemType}/rules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ruleName: ruleName,
+                        ruleValue: ruleValue,
+                        conditionExpression: condition,
+                        priority: priority,
+                        active: true
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Rule added successfully!');
+                    hideAddRuleForm();
+                    loadRules(selectedItemType);
+                } else {
+                    showStatus('Error adding rule', true);
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, true);
+            }
+        }
+    </script>
+</body>
+</html>
+
+<!-- src/main/resources/templates/calendar.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar View - Gilded Rose</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f5f5f5;
+            padding: 1rem;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .date-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        .current-date {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .inventory-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .inventory-card:hover {
+            transform: translateY(-2px);
+        }
+        .item-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .metrics {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .quality, .sell-in {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            text-align: center;
+            min-width: 80px;
+        }
+        .quality.high { background: #d4edda; color: #155724; }
+        .quality.medium { background: #fff3cd; color: #856404; }
+        .quality.low { background: #f8d7da; color: #721c24; }
+        .sell-in.positive { background: #d1ecf1; color: #0c5460; }
+        .sell-in.expired { background: #f8d7da; color: #721c24; }
+        .item-type {
+            background: #e7f3ff;
+            color: #0066cc;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .add-item-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-group {
+            flex: 1;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .status-message {
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            display: none;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📅 Calendar View</h1>
+        <p>Navigate through time to see inventory states</p>
+        <a href="/" style="color: white; text-decoration: none;">← Back to Home</a>
+    </div>
+
+    <div class="controls">
+        <div class="date-controls">
+            <button class="btn btn-primary" onclick="changeDate(-1)">← Previous Day</button>
+            <div class="current-date" id="current-date">Loading...</div>
+            <button class="btn btn-primary" onclick="changeDate(1)">Next Day →</button>
+        </div>
+        
+        <div>
+            <button class="btn btn-success" onclick="showAddItemForm()">+ Add Item</button>
+            <button class="btn btn-warning" onclick="simulateToCurrentDate()">⚡ Simulate to Date</button>
+        </div>
+    </div>
+
+    <div class="status-message" id="status-message"></div>
+
+    <!-- Add Item Form -->
+    <div class="add-item-form" id="add-item-form">
+        <h3>Add New Inventory Item</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Item Name:</label>
+                <input type="text" id="new-item-name" placeholder="e.g., Magic Sword">
+            </div>
+            <div class="form-group">
+                <label>Item Type:</label>
+                <select id="new-item-type">
+                    <!-- Will be populated from API -->
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Quality:</label>
+                <input type="number" id="new-item-quality" value="20" min="0" max="50">
+            </div>
+            <div class="form-group">
+                <label>Sell In:</label>
+                <input type="number" id="new-item-sellin" value="10">
+            </div>
+        </div>
+        <button class="btn btn-success" onclick="addInventoryItem()">Add Item</button>
+        <button class="btn" onclick="hideAddItemForm()">Cancel</button>
+    </div>
+
+    <div class="inventory-grid" id="inventory-grid">
+        <!-- Inventory items will be loaded here -->
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let itemTypes = [];
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadItemTypes();
+            updateDateDisplay();
+            loadInventoryForDate();
+        });
+
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'status-message status-error' : 'status-message status-success';
+            statusEl.style.display = 'block';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function updateDateDisplay() {
+            document.getElementById('current-date').textContent = 
+                currentDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+        }
+
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            updateDateDisplay();
+            loadInventoryForDate();
+        }
+
+        async function loadItemTypes() {
+            try {
+                const response = await fetch('/api/admin/item-types');
+                itemTypes = await response.json();
+                
+                const select = document.getElementById('new-item-type');
+                select.innerHTML = itemTypes.map(type => 
+                    `<option value="${type.id}">${type.name}</option>`
+                ).join('');
+            } catch (error) {
+                showStatus('Error loading item types: ' + error.message, true);
+            }
+        }
+
+        async function loadInventoryForDate() {
+            try {
+                const dateStr = formatDate(currentDate);
+                const response = await fetch(`/api/inventory/date/${dateStr}`);
+                
+                if (response.ok) {
+                    const snapshots = await response.json();
+                    displayInventory(snapshots);
+                } else {
+                    // If no data for this date, try to simulate it
+                    showStatus('No data for this date. Simulating...', false);
+                    await simulateToCurrentDate();
+                }
+            } catch (error) {
+                showStatus('Error loading inventory: ' + error.message, true);
+            }
+        }
+
+        function displayInventory(snapshots) {
+            const grid = document.getElementById('inventory-grid');
+            
+            if (snapshots.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #666;">No inventory items for this date</div>';
+                return;
+            }
+
+            grid.innerHTML = snapshots.map(snapshot => {
+                const qualityClass = snapshot.quality >= 30 ? 'high' : snapshot.quality >= 15 ? 'medium' : 'low';
+                const sellInClass = snapshot.sellIn >= 0 ? 'positive' : 'expired';
+                
+                return `
+                    <div class="inventory-card">
+                        <div class="item-name">${snapshot.inventoryItemId}</div>
+                        <div class="metrics">
+                            <div class="quality ${qualityClass}">Quality: ${snapshot.quality}</div>
+                            <div class="sell-in ${sellInClass}">Sell In: ${snapshot.sellIn}</div>
+                        </div>
+                        <div class="item-type">Snapshot</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function simulateToCurrentDate() {
+            try {
+                const dateStr = formatDate(currentDate);
+                const response = await fetch(`/api/inventory/simulate-to/${dateStr}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showStatus('Simulation completed!');
+                    loadInventoryForDate();
+                } else {
+                    showStatus('Error simulating inventory', true);
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, true);
+            }
+        }
+
+        function showAddItemForm() {
+            document.getElementById('add-item-form').style.display = 'block';
+        }
+
+        function hideAddItemForm() {
+            document.getElementById('add-item-form').style.display = 'none';
+            // Clear form
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-quality').value = '20';
+            document.getElementById('new-item-sellin').value = '10';
+        }
+
+        async function addInventoryItem() {
+            const name = document.getElementById('new-item-name').value;
+            const typeId = document.getElementById('new-item-type').value;
+            const quality = parseInt(document.getElementById('new-item-quality').value);
+            const sellIn = parseInt(document.getElementById('new-item-sellin').value);
+
+            if (!name.trim()) {
+                showStatus('Item name is required', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        itemTypeId: typeId,
+                        initialQuality: quality,
+                        initialSellIn: sellIn,
+                        currentQuality: quality,
+                        currentSellIn: sellIn
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Item added successfully!');
+                    hideAddItemForm();
+                    loadInventoryForDate();
+                } else {
+                    showStatus('Error adding item', true);
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, true);
+            }
+        }
+    </script>
+</body>
+</html>
